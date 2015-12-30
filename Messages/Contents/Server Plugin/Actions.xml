@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<Actions>
+  <Action id="sendMessage" deviceFilter="self.messagesAppDevice">
+    <Name>Send Message using the Messages App</Name>
+    <CallbackMethod>sendMessage</CallbackMethod>
+    <ConfigUI>
+      <Field id="message" type="textfield" default="">
+	<Label>Message to Send:</Label>
+      </Field>
+    </ConfigUI>
+  </Action>
+  <Action id="markAsRead" deviceFilter="self.messagesAppDevice">
+    <Name>Mark current message as Read, and allow the next one to be fetched</Name>
+    <CallbackMethod>markAsRead</CallbackMethod>
+  </Action>
+  <Action id="receiveMessage">
+    <Name>Receive a message from the Messages App</Name>
+    <CallbackMethod>receiveMessage</CallbackMethod>
+    <ConfigUI>
+      <Field id="info" type="label">
+	<Label>In order to receive messages from Messages.app, go to the Messages.app Preferences, choose the General tab, and change the value of "AppleScript handler" to "Open Scripts Folder". Copy the Run Indigo Message Plugin Action.applescript file into that directory, then close and re-open Messages.app Preferences, and select the Run Indigo Message Plugin Action in the AppleScript handler list. Due to a bug in Messages, new messages will not always reach Indigo if Messages.app is in the foreground, so put an Indigo window in front of it and it should start working.</Label>
+      </Field>
+    </ConfigUI>
+  </Action>
+</Actions>

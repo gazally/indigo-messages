@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<Devices>
+  <Device type="custom" id="messagesAppDevice">
+    <Name>Messages App Device</Name>
+    <ConfigUI>			
+	<Field id="instructions" type="label">
+		<Label>This device will monitor the Messages App for communications from one person, and allow you to send messages to them.</Label>
+	</Field>
+	<Field id="sep" type="separator"/>
+	<Field type="menu" id="service">
+	  <Label>Choose the message service to use (see Messages Preferences):"</Label>
+	  <List class="self" method="serviceGenerator"/>
+	</Field>
+	<Field id="handle" type="menu">
+	  <Label>Recipient's phone number, Apple ID or chat service login:</Label>
+	  <List class="self" method="buddyGenerator" dynamicReload="true"/>
+	</Field>
+	<Field id="sep2" type="separator"/>
+	<Field id="instructions2" type="label">
+	  <Label>On some message services, Messages.app does not supply helpful information about who you're talking to. If you're having trouble figuring out what to select here, try starting a conversation with the person, turning on debug output using Toggle Debugging on the Plugin menu under Messages, and then when a message arrives from that person, their message service and ID or login will appear in the Indigo Log window.</Label>
+	</Field>
+    </ConfigUI>
+    <States>
+      <State id="name">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Name:</TriggerLabel>
+	<ControlPageLabel>Name:</ControlPageLabel>
+      </State>
+      <State id="status">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Status:</TriggerLabel>
+	<ControlPageLabel>Status:</ControlPageLabel>
+      </State>
+      <State id="message">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Last Message Received:</TriggerLabel>
+	<ControlPageLabel>Last Message Received:</ControlPageLabel>
+      </State>
+      <State id="response">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Last Message Sent:</TriggerLabel>
+	<ControlPageLabel>Last Message Sent:</ControlPageLabel>
+      </State> 
+      <State id="responseStatus">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Status of Last Sent Message:</TriggerLabel>
+	<ControlPageLabel>Status of Last Sent Message:</ControlPageLabel>
+      </State>
+    </States>
+    <UiDisplayStateId>status</UiDisplayStateId>
+  </Device>
+</Devices>

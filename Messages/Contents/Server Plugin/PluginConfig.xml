@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<PluginConfig>
+	<SupportURL>https://github.com/gazally/messages-indigo-plugin</SupportURL>
+	<Field id="info" type="label">
+		<Label>Messages App Plugin</Label>
+	</Field>
+	<Field id="sep" type="separator"/>
+	<Field id="instructions" type="label">
+		<Label>Create a new device for each person you want to exchange Messages with.</Label>
+	</Field>
+	<Field id="instructions2" type="label">
+		<Label>In order to for Indigo to receive Messages from the Messages App, you must put the handler where it belongs...</Label>
+	</Field>
+	<Field id="sep2" type="separator"/>
+	<Field id="showDebugInfo" type="checkbox" defaultValue="false">
+		<Label>Enable debugging:</Label>
+		<Description>(not recommended)</Description>
+	</Field>
+</PluginConfig>
