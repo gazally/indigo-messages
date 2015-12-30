@@ -3,14 +3,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-import appscript
+from __future__ import print_function
 import os
 import sys
 import unittest
 
-from unittest import TestCase
-from mock import patch, Mock, MagicMock
+from mock import patch, Mock
 from threading import Thread
 
 sys.path.append(os.path.abspath('../Messages/Contents/Server Plugin'))
@@ -41,13 +39,13 @@ class DeviceForTest(object):
         self.pluginProps = props
         
 
-class PluginTestCase(TestCase):
+class PluginTestCase(unittest.TestCase):
 
     def setUp(self):
         self.indigo_mock = Mock()
         self.indigo_mock.PluginBase = PluginBaseForTest
         self.indigo_mock.PluginBase.pluginPrefs = {"showDebugInfo" : False}
-        self.indigo_mock.Dict = Mock(return_value={}.copy()) #does this work?
+        self.indigo_mock.Dict = Mock(return_value={}.copy())
         self.indigo_mock.devices = {}
         
         modules = sys.modules.copy()
@@ -59,10 +57,16 @@ class PluginTestCase(TestCase):
         self.plugin_module = plugin
         self.plugin_module.indigo.PluginBase = PluginBaseForTest
 
+        self.mapp_patch = patch('plugin.appscript.app')
+        # appscript.app() adds attributes at execution time like Mock does,
+        # so avoid calling it
+        self.mapp_patch.start()   
         self.plugin = self.new_plugin()
-
+        self.mapp = self.plugin.messages_app
+        
     def tearDown(self):
         self.module_patcher.stop()
+        self.mapp_patch.stop()
 
     def new_plugin(self):
         # Before I created this little function,
@@ -150,86 +154,56 @@ class PluginTestCase(TestCase):
         self.assertTrue(ok)
 
     def test_ServiceGenerator_Succeeds_WhenMessagesAppRaisesException(self):
-        self.plugin._services_in_messages_app = (
-            Mock(side_effect=Exception("test")))
+        self.mapp.services = Mock(side_effect = Exception("test"))
         s = self.plugin.serviceGenerator()
         self.assertEqual(len(s), 0)
 
     def test_ServiceGenerator_Succeeds_WhenMessagesAppAvailable(self):
-        self.assertTrue(self.plugin._messages_app_available(),
-           "Can't test communication with Messages App if it is not installed.")
+        self.mock_services_and_buddies()
         s = self.plugin.serviceGenerator()
-        self.assertTrue(len(s) > 0, "If you have the Messages App installed "
-                        "but no active services set up, this test will fail.")
+        self.assertTrue(len(s) == 1)
 
     def test_ServiceGenerator_Succeeds_WhenGivenUnknownService(self):
-        self.make_plugin_with_mocked_appscript()
-        self.plugin.messages_app.services.name.get = (
-            Mock(return_value=["E:fred@bedrock.com"]))
-        self.plugin.messages_app.services.enabled.get = (
-            Mock(return_value=[True]))
-        self.plugin.messages_app.services.service_type.get = (
-            Mock(return_value=["iMessage"]))
-
+        self.mock_services_and_buddies()
         values = {"service":"unknown"}
         s = self.plugin.serviceGenerator(values=values)
         self.assertEqual(len(s), 2)
 
     def test_BuddyGenerator_Succeeds_WhenNotGivenService(self):
-        self.assertTrue(self.plugin._messages_app_available(),
-           "Can't test communication with Messages App if it is not installed.")
+        self.mock_services_and_buddies()
         b = self.plugin.buddyGenerator()
         self.assertTrue(len(b) == 0)
 
-    def test_BuddyGenerator_Succeeds_WhenMessagesAppRaisesException(self):     
-        self.plugin._services_in_messages_app = (
-            Mock(side_effect=Exception("test")))
+    def test_BuddyGenerator_Succeeds_WhenMessagesAppRaisesException(self):
+        self.mapp.services = Mock(side_effect=Exception("test"))
         b = self.plugin.buddyGenerator()
         self.assertEqual(len(b), 0)
 
     def test_BuddyGenerator_Succeeds_WhenGivenUnknownService(self):
-        self.plugin._services_in_messages_app = (
-            Mock(return_value={"E:fred@bedrock.com":"iMessage"}))
-        self.plugin._buddies_on_service = Mock()
-        
+        self.mock_services_and_buddies()
         values = {"service":"unknown"}
         b = self.plugin.buddyGenerator(values=values)
-        self.assertEqual(self.plugin._buddies_on_service.call_count, 0)
         self.assertEqual(len(b), 0)
 
     def test_BuddyGenerator_Succeeds_WhenGivenUnknownHandle(self):
-        self.plugin._services_in_messages_app = (
-            Mock(return_value={"E:fred@bedrock.com":"iMessage"}))
-        self.plugin._buddies_on_service = (
-            Mock(return_value={"barney@bedrock.com": "Barney Rubble"}))
-        
+        self.mock_services_and_buddies()
         values = {"service":"E:fred@bedrock.com",
                   "handle": "wilma@bedrock.com"}
         b = self.plugin.buddyGenerator(values=values)
-        self.plugin._buddies_on_service.assert_called_with("E:fred@bedrock.com")
         self.assertEqual(len(b), 2)
 
     def test_BuddyGenerator_Succeeds_WhenGivenUnknowns(self):
-        self.plugin._services_in_messages_app = (
-            Mock(return_value={"E:fred@bedrock.com":"iMessage"}))
-        self.plugin._buddies_on_service = Mock()
+        self.mock_services_and_buddies()
         values = {"service":"unknown",
                   "handle": "wilma@bedrock.com"}
         b = self.plugin.buddyGenerator(values=values)
-        self.assertEqual(self.plugin._buddies_on_service.call_count, 0)
         self.assertEqual(len(b), 1)
 
     def test_DeviceStartComm_Succeeds_OnValidInput(self):
-        self.make_plugin_with_mocked_appscript()
-        self.plugin.messages_app.services["someservice"].enabled.get = (
-            Mock(return_value=True))
-        self.plugin.messages_app.services["someservice"].buddies.handle.get = (
-            Mock(return_value="fred@bedrock.com"))
-
+        self.mock_services_and_buddies()
         dev = self.make_and_start_a_test_device(
-                      1, "dev1", {"handle":"fred@bedrock.com",
-                                  "service":"someservice"})
-
+                      1, "dev1", {"handle":"barney@bedrock.com",
+                                  "service":"E:fred@bedrock.com"})
         states = dev.states
         self.assertEqual(len(states), 5)
         self.assertEqual(states["message"], "")
@@ -238,23 +212,16 @@ class PluginTestCase(TestCase):
         self.assertEqual(states["responseStatus"], "No Message")
         self.assertTrue("name" in states)
                         
-    def test_DeviceStartComm_Fails_OnInvalidInput(self):
-        # this will fail if you don't have at least one valid service
-        # set up in Messages app
-        self.assertTrue(self.plugin._messages_app_available(),
-           "Can't test communication with Messages App if it is not installed.")
-
+    def test_DeviceStartComm_Fails_WhenServiceNotFound(self):
+        self.mapp.services.__getitem__ = Mock(side_effect=Exception("test"))
         dev1 = self.make_and_start_a_test_device(1, "d1",
                                                 {"handle":"######",
                                                  "service":"#####"})
         self.asserts_for_DeviceStartComm_Failure(dev1.states)
         self.assertTrue(dev1.id in self.plugin.device_info)
         
-        app = appscript.app("Messages")
-        service = app.services[1].name.get()
         dev2 = self.make_and_start_a_test_device(2, "d2",
-                                                 {"handle":"######",
-                                                  "service":service})
+                    {"handle":"######", "service":"E:fred@bedrock.com"})
         self.asserts_for_DeviceStartComm_Failure(dev2.states)
         self.assertTrue(dev2.id in self.plugin.device_info)
 
@@ -267,27 +234,25 @@ class PluginTestCase(TestCase):
         self.assertTrue("name" in states)
 
     def test_DeviceStopComm_Succeeds(self):
-        self.mock_to_make_deviceStartComm_succeed()
-        
+        self.mock_services_and_buddies()
         dev = self.make_and_start_a_test_device(1, "d1",
-                                                {"handle":"######",
-                                                 "service":"#####"})
+                                                {"handle":"barney@bedrock.com",
+                                                 "service":"E:fred@bedrock.com"})
         self.plugin.deviceStopComm(dev)
         self.assertFalse(dev.id in self.plugin.device_info)
 
     def test_receiveMessageAndMarkAsRead_Succeed_WhenMatchingDeviceExists(self):
-        self.mock_to_make_deviceStartComm_succeed()
-
+        self.mock_services_and_buddies()
         dev = self.make_and_start_a_test_device(1, "d1",
-                                            {"handle":"fred@fred.com",
-                                             "service":"fredserv"})
+                                            {"handle":"barney@bedrock.com",
+                                             "service":"E:fred@bedrock.com"})
         self.assertEqual(dev.states["status"], "No Message")
 
         action = Mock()
         test_message = "This is a test"
         action.props = {"message":test_message,
-                        "handle": dev.pluginProps["handle"],
-                        "service":dev.pluginProps["service"],
+                        "handle": "barney@bedrock.com",
+                        "service": "E:fred@bedrock.com",
                         "service_type":"#####"}
         self.plugin.receiveMessage(action)
         self.assertEqual(dev.states["status"], "New")
@@ -340,9 +305,6 @@ class PluginTestCase(TestCase):
         self.plugin._name_of_buddy = Mock(return_value="whatever")
 
     def test_sendMessage_Succeeds_OnValidInput(self):
-        # Mock appscript, so that testing never sends messages no matter what
-        self.make_plugin_with_mocked_appscript()
-
         dev = self.make_and_start_a_test_device(1, "d1",
                                             {"handle":"fred@fred.com",
                                              "service":"fredserv"})
@@ -352,14 +314,14 @@ class PluginTestCase(TestCase):
         action.props ={"message": test_message}
         self.plugin.sendMessage(action)
 
-        self.assertTrue(self.plugin.messages_app.send.called)
+        self.assertTrue(self.mapp.send.called)
         self.assertEqual(dev.states["responseStatus"], "Sent")
         self.assertEqual(dev.states["response"], test_message)
 
     def test_sendMessage_SetsErrorState_OnMessagesAppException(self):
-        # Mock appscript, so that testing never sends messages no matter what
-        self.make_plugin_with_mocked_appscript()
-        self.plugin.messages_app.send = Mock(side_effect=Exception("test"))
+        # Turns out Messages.app doesn't throw exceptions no matter what
+        # random non-handle string and service you give it
+        self.mapp.send = Mock(side_effect=Exception("test"))
         
         dev = self.make_and_start_a_test_device(1, "d1",
                                             {"handle":"fred@fred.com",
@@ -378,20 +340,19 @@ class PluginTestCase(TestCase):
         self.indigo_mock.devices[dev_id] = dev
         self.plugin.deviceStartComm(dev)
         return dev
+
+    def mock_services_and_buddies(self):
+        self.mapp.services.name.get.return_value = ["E:fred@bedrock.com"]
+        self.mapp.services.enabled.get.return_value = [True]
+        self.mapp.services.service_type.get.return_value = ["iMessage"]
         
-    def make_plugin_with_mocked_appscript(self):
-        appscript_app_patch = patch('plugin.appscript.app',
-                                    new=Mock(return_value = 0))
-        # appscript.app() adds attributes at execution time like Mock does,
-        # so avoid calling it
-        appscript_app_patch.start()   
-        self.plugin = self.new_plugin()
-        appscript_app_patch.stop()
-        self.assertEqual(self.plugin.messages_app, 0)
-        self.plugin.messages_app = MagicMock()
-        
+        mockbuddy = Mock()
+        self.mapp.services.__getitem__.return_value = mockbuddy
+        mockbuddy.buddies.name.get = Mock(return_value=["Barney Rubble"])
+        mockbuddy.buddies.handle.get = Mock(return_value=["barney@bedrock.com"])
+        mockbuddy.name.get = "Barney Rubble"
+        mockbuddy.handle.get = "barney@bedrock.com"
+        mockbuddy.buddies.__getitem__ = Mock()
+
 if __name__ == "__main__":
     unittest.main()
-
-     
-    
