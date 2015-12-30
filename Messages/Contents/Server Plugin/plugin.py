@@ -25,13 +25,15 @@ class Plugin(indigo.PluginBase):
     def __init__(self, plugin_id, display_name, version, prefs):
         indigo.PluginBase.__init__(self, plugin_id, display_name,
                                    version, prefs)
+        self.debug = True
+        self.debugLog(u"showDebugInfo" + unicode(prefs.get("showDebugInfo", False)))
         self.debug = prefs.get("showDebugInfo", False)
         self.device_info = {}
 
         try:
             self._init_messages_app()
         except Exception, e:
-            self.debugLog("Error talking to Messages:\n" + str(e))
+            self.debugLog("Error talking to Messages:\n" + unicode(e))
             self.errorLog("The Messages App doesn't seem to be installed "
                           "on your system.")
 
@@ -63,6 +65,13 @@ class Plugin(indigo.PluginBase):
 
         """
         self.debugLog("Preferences Validation called")
+        debug = values.get("showDebugInfo", False)
+        if self.debug:
+            if not debug:
+                self.debugLog("Turning off debug logging")
+        self.debug = debug
+        self.debugLog("Debug logging is on") #won't print if self.debug is False
+            
         return(True, values)
 
     ##### Action Configuration UI ######
@@ -111,9 +120,8 @@ class Plugin(indigo.PluginBase):
         "iMessage (E:email@icloud.com)" is a less confusing thing to
         show the user, but still uniquely identifies the service in
         the event of two accounts on the same service set up in
-        Messages. Although in the case of Jabber chats, Messages may
-        not give us anything to show the user that isn't confusing.
-        
+        Messages.
+
         If a pre-existing device is brought up in the Configuration 
         dialog, it may reference a message service that no longer exists
         in Messages. Put that in the list too, labeled as Unavailable.
@@ -128,19 +136,8 @@ class Plugin(indigo.PluginBase):
         except Exception, e:
             services = {}
             self.debugLog("Error getting list of services from Messages: " + 
-                          str(e))
-
-        tuples = [(n, "{0} ({1})".format(t, n))
-                  for n, t in services.items()]
-        if not self.is_value_in_results(values, "service", services.keys()):
-            if values is not None and "service" in values:
-                #we got here because the service in a pre-existing device
-                #is either no longer existing or no longer enabled in Messages
-                tup = (values["service"],
-                 "Unavailable in Messages App ({0})".format(values["service"]))
-                tuples.append(tup)
-                
-        return sorted(tuples, key=lambda tup: tup[1])
+                          unicode(e))
+        return self.build_display_strings(values, "service", services)
 
     def buddyGenerator(self, filter_by="", values=None, type_id="",
                        target_id=0):
@@ -153,41 +150,52 @@ class Plugin(indigo.PluginBase):
         
         Returns a list of tuples, the first element of each is the handle
         and the second the person's name with the handle in parens, for
-        example: "Fred Flintstone (fred@bedrock.com)
+        example: "Fred Flintstone (fred@bedrock.com).
+
+        This works great for iMessage and for people in your contacts list,
+        but for Jabber conversations the buddy name is something like
+        gibberish@id.talk.google.com.
         """
         try:
             service = None
             buddies = {}
             services = self._services_in_messages_app()
-            if self.is_value_in_results(values, "service", services):
+            if values is not None and "service" in values:
                 service = values["service"]
-            if service:
+            if service in services:
                 buddies = self._buddies_on_service(service)
         except Exception, e:
             buddies = {}
             self.debugLog("Error getting list of buddies on service "
-                          "from Messages: " + str(e))
-            
-        tuples =  [(h, "{0} ({1})".format(n, h)) for h, n in buddies.items()]
+                          "from Messages: " + unicode(e))
+        return self.build_display_strings(values, "handle", buddies)
+    
+    def build_display_strings(self, values, tag, results):
+        """ 
+        Given a list of services or buddies in dictionary form, return a list
+        of tuples with keys and display strings for the Indigo UI dialog,
+        sorted by display string. If values[tag] is not in the list of results,
+        add it.
+        """
+        tuples =  [(h, u"{0} ({1})".format(n, h)) for h, n in results.items()]
 
-        if not self.is_value_in_results(values, "handle", buddies):
-            if values is not None and "handle" in values and values["handle"]:
-                tup = (values["handle"],
-                    "Unavailable in Messages App({0})".format(values["handle"]))
-                tuples.append(tup)
+        if (values is not None and tag in values and values[tag]
+            and values[tag] not in results.keys()):
+            tup = (values[tag],
+                   u"Unavailable ({0})".format(values[tag]))
+            tuples.append(tup)
 
         return sorted(tuples, key=lambda tup: tup[1])
 
-    def is_value_in_results(self, values, values_tag, results):
-        """Return whether values[values_tag] can be found in results, where
-        results is a list. Returns False if values is None or if
-        values_tag cannot be found in values.
+    def servicePopupChanged(self, values, type_id, device_id):
+        """Called by the Indigo UI when the user selects something in the
+        list of message services. This doesn't do anything, but if it's not
+        here, buddyGenerator won't get called when the selected service is
+        changed.
 
         """
-        if values is None or values_tag not in values:
-            return False
-        return values[values_tag] in results
-    
+        return values
+
     ###### Menu Items ######
     
     def toggleDebugging(self):
@@ -211,9 +219,9 @@ class Plugin(indigo.PluginBase):
 
         """
         props = device.pluginProps
-        self.debugLog("Starting device: {0} "
-                      "for messages from: {1} "
-                      "on service {2}".format(device.id, props["handle"],
+        self.debugLog(u"Starting device: {0} "
+                      u"for messages from: {1} "
+                      u"on service {2}".format(device.id, props["handle"],
                                               props["service"]))
         self.device_info[device.id] = []
 
@@ -223,9 +231,11 @@ class Plugin(indigo.PluginBase):
                                             props["service"])
             name = self._name_of_buddy(buddy)
         except Exception, e:
-            self.debugLog("Error talking to Messages: " + str(e))
-            self.errorLog("Messages App doesn't recognize {0} on {1}. ".format(
-                props["handle"], props["service"]))
+            self.debugLog("Error talking to Messages: " + unicode(e))
+            self.errorLog(u'Device {0} cannot be started because '
+                          u'Messages App does not recognize "{1}" '
+                          u'as a valid handle on "{2}". '.format(
+                              device.id, props["handle"], props["service"]))
             status = "Error"
             name = ""
 
@@ -239,7 +249,7 @@ class Plugin(indigo.PluginBase):
         """ Called by Indigo Server to tell us it's done with a device.
         Maintains the list of devices used by receiveMessage.
         """
-        self.debugLog("Stopping device: {0}".format(device.id))
+        self.debugLog(u"Stopping device: {0}".format(device.id))
         self.device_info.pop(device.id, None)
  
 
@@ -278,9 +288,9 @@ class Plugin(indigo.PluginBase):
             service_type = action.props["service_type"]
         else:
             service_type = ""
-        self.debugLog('Received Message: "{0}" '
-                      'From handle: {1}  '
-                      'On service: {2} ({3})'.format(message, handle,
+        self.debugLog(u'Received Message: "{0}" '
+                      u'From handle: {1}  '
+                      u'On service: {2} ({3})'.format(message, handle,
                                                    service_name, service_type))
         found_device = False
         for device_id in self.device_info.iterkeys():
@@ -307,6 +317,8 @@ class Plugin(indigo.PluginBase):
 
         """
         device_id = action.deviceId
+        if device_id not in indigo.devices:
+            return
         device = indigo.devices[device_id]
         if device.states["status"] == "New":
             device.updateStateOnServer(key="status", value="Read")
@@ -333,6 +345,8 @@ class Plugin(indigo.PluginBase):
         with no idea anything went wrong.
 
         """
+        if action.deviceId not in indigo.devices:
+            return
         device = indigo.devices[action.deviceId]
         handle = device.pluginProps["handle"]
         service = device.pluginProps["service"]
@@ -343,12 +357,12 @@ class Plugin(indigo.PluginBase):
         try:
             self._send_using_messages_app(message, handle, service)
         except Exception, e:
-            self.debugLog("Error talking to Messages:" +  str(e))
-            self.errorLog("Message to {0} couldn't be sent".format(handle))
+            self.debugLog("Error talking to Messages:" +  unicode(e))
+            self.errorLog(u"Message to {0} couldn't be sent".format(handle))
             device.updateStateOnServer(key="responseStatus", value="Error")
         else:
             device.updateStateOnServer(key="responseStatus", value="Sent")
-            self.debugLog('Sent "{0}" to {1}.'.format(message, handle))
+            self.debugLog(u'Sent "{0}" to {1}.'.format(message, handle))
 
 
     ##### Dealing with Messages App #####
@@ -426,7 +440,7 @@ class Plugin(indigo.PluginBase):
         
         for name, enabled, typ in zip(names, flags, types):
             if enabled:
-                services[name] = self._trim_appscript_weirdness(str(typ))
+                services[name] = self._trim_appscript_weirdness(unicode(typ))
 
         return services
 

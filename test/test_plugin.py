@@ -111,7 +111,7 @@ class PluginTestCase(unittest.TestCase):
         self.assertFalse(self.plugin.debug)
              
     def test_PreferencesUIValidation_Succeeds(self):
-        values = {}
+        values = {"showDebugInfo":"false"}
         ok, d = self.plugin.validatePrefsConfigUi(values)
         self.assertTrue(ok)
 

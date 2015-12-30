@@ -10,6 +10,7 @@
 	<Field type="menu" id="service">
 	  <Label>Choose the message service to use (see Messages Preferences):"</Label>
 	  <List class="self" method="serviceGenerator"/>
+	  <CallbackMethod>servicePopupChanged</CallbackMethod>
 	</Field>
 	<Field id="handle" type="menu">
 	  <Label>Recipient's phone number, Apple ID or chat service login:</Label>
@@ -17,7 +18,7 @@
 	</Field>
 	<Field id="sep2" type="separator"/>
 	<Field id="instructions2" type="label">
-	  <Label>On some message services, Messages.app does not supply helpful information about who you're talking to. If you're having trouble figuring out what to select here, try starting a conversation with the person, turning on debug output using Toggle Debugging on the Plugin menu under Messages, and then when a message arrives from that person, their message service and ID or login will appear in the Indigo Log window.</Label>
+	  <Label>On some message services, Messages.app puts confusing and unhelpful things in its list of available chat contacts. If you're having trouble figuring out what to select here, try starting a conversation with the person, turning on debug output using Toggle Debugging on the Plugin menu under Messages, and then when a message arrives from that person, their message service and ID or login will appear in the Indigo Log window.</Label>
 	</Field>
     </ConfigUI>
     <States>
