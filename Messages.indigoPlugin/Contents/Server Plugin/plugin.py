@@ -9,8 +9,6 @@
 import appscript
 import indigo
 
-
-#todo - action validation for markAsRead, receiveMessage
 #todo - indigo.device has a setErrorStateOnServer method. Maybe I should
 #       be using it
 #todo - is it possible to programatically start a new conversation?
@@ -85,7 +83,7 @@ class Plugin(indigo.PluginBase):
         errors = indigo.Dict()
         if type_id == "sendMessage":
             if "message" not in values or not values["message"]:
-                errors["message"] = "Can't send an empty message"
+                errors["message"] = "Can't send an empty message."
                 errors["showAlertText"] = "Please type a message to send."
 
         if errors:
@@ -102,12 +100,7 @@ class Plugin(indigo.PluginBase):
         here.
         """
         self.debugLog("Device Validation called")
-        errors = indigo.Dict()
-
-        if errors:
-            return (False, values, errors)
-        else:
-            return (True, values)
+        return (True, values)
 
     def serviceGenerator(self, filter_by="", values=None, type_id="",
                          target_id=0):
@@ -137,7 +130,7 @@ class Plugin(indigo.PluginBase):
             services = {}
             self.debugLog("Error getting list of services from Messages: " + 
                           unicode(e))
-        return self.build_display_strings(values, "service", services)
+        return self._build_display_strings(values, "service", services)
 
     def buddyGenerator(self, filter_by="", values=None, type_id="",
                        target_id=0):
@@ -168,9 +161,9 @@ class Plugin(indigo.PluginBase):
             buddies = {}
             self.debugLog("Error getting list of buddies on service "
                           "from Messages: " + unicode(e))
-        return self.build_display_strings(values, "handle", buddies)
+        return self._build_display_strings(values, "handle", buddies)
     
-    def build_display_strings(self, values, tag, results):
+    def _build_display_strings(self, values, tag, results):
         """ 
         Given a list of services or buddies in dictionary form, return a list
         of tuples with keys and display strings for the Indigo UI dialog,
@@ -283,11 +276,8 @@ class Plugin(indigo.PluginBase):
         message = action.props["message"]
         handle = action.props["handle"]
         service_name = action.props["service"]
+        service_type = action.props.get("service_type", "")
 
-        if "service_type" in action.props:
-            service_type = action.props["service_type"]
-        else:
-            service_type = ""
         self.debugLog(u'Received Message: "{0}" '
                       u'From handle: {1}  '
                       u'On service: {2} ({3})'.format(message, handle,
@@ -345,12 +335,17 @@ class Plugin(indigo.PluginBase):
         with no idea anything went wrong.
 
         """
-        if action.deviceId not in indigo.devices:
+        if (action.deviceId not in indigo.devices or
+            "message" not in action.props):
             return
         device = indigo.devices[action.deviceId]
+        if ("handle" not in device.pluginProps or
+            "service" not in device.pluginProps):
+            return
+
+        message = self.substitute(action.props["message"])
         handle = device.pluginProps["handle"]
         service = device.pluginProps["service"]
-        message = action.props["message"]
 
         device.updateStateOnServer(key="response", value=message)
         device.updateStateOnServer(key="responseStatus", value="Sending")

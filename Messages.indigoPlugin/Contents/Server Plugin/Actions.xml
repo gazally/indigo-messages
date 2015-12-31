@@ -7,6 +7,10 @@
       <Field id="message" type="textfield" default="">
 	<Label>Message to Send:</Label>
       </Field>
+      <Field id = "sep" type = "separator"/>
+      <Field id = "explanation" type="label">
+	<Label>In the "Message to Send" field above, you can insert device substitution markup which will substitute a variable value just before the action is run. Simply insert %%v:VARIABLEID%% anywhere in the text as many times as you want. VARIABLEID is the variable's numeric id as found in the Variable List window. Likewise, you can substitute device state values by inserting %%d:DEVICEID:STATEKEY%% where DEVICEID is the device's numeric identifier and STATEKEY is the state identifier as found in the documentation for built-in devices and in the Custom States tile in the control area of the Home screen for custom plugin devices (which you may have to scroll the bottom panel of the Home screen to see).</Label>
+      </Field>
     </ConfigUI>
   </Action>
   <Action id="markAsRead" deviceFilter="self.messagesAppDevice">

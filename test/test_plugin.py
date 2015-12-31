@@ -11,21 +11,27 @@ import unittest
 from mock import patch, Mock
 from threading import Thread
 
-sys.path.append(os.path.abspath('../Messages/Contents/Server Plugin'))
+sys.path.append(os.path.abspath('../Messages.indigoPlugin/Contents/Server Plugin'))
 
 class PluginBaseForTest(object):
+    """Mockup indigo.plugin's base class for testing, so we don't have to import
+    indigo
+    """
     def __init__(self, pid, name, version, prefs):
         pass
     def __del__(self):
         pass
     def sleep(self):
         pass
+    def substitute(self, string):
+        return string
     def debugLog(self, string):
         pass
     def errorLog(self, string):
         pass
 
 class DeviceForTest(object):
+    """ Mockup of indigo.device, for testing """
     def __init__(self, dev_id, name, props):
         self.id = dev_id
         self.name = name

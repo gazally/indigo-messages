@@ -1,7 +1,9 @@
 ## indigo-messages
-An Indigo Domotics plugin to enable Indigo to send and receive messages with Messages.app
+An Indigo Domotics plugin to enable Indigo to send and receive messages with the OS X Messages app.
 
-This plugin is a work in progress. The only configuration I've tried it on is OS X El Capitan and Indigo 6.1.4. Please only use it if you don't mind using beta software.
+In addition to iMessages, this also enables Indigo to communicate with the other services available in Messages, which are Yahoo Messenger, Google Talk/Hangouts, AOL Messaging/AIM and Jabber.
+
+This plugin is a work in progress. The only configuration I've tried it on is OS X El Capitan and Indigo 6.1.4, using iMessages and Google Talk. Please only use it if you don't mind using beta software.
 
 ### Installation instructions
 
@@ -34,3 +36,8 @@ The last action is "Send Message using the Messages app." Choose a Messages Plug
 Toggle Debugging
 
 This works like any other plugin in Indigo. It toggles debugging output on and off. Use it with care, especially since it will cause every message received by Messages.app to be written to your Indigo log.
+
+###Example
+
+Once you have a device set up and receiving messages, it's easy to make a trigger that automatically replies. First, look at the device and copy its device ID. Then create a new trigger, set its type to "Device State Changed", select your device and below that change the fields to "Status", "Becomes Equal to" and "New". Then select the Actions tab and choose "Send Message using the Messages App" from the Messages Actions list. Choose the same device, and then open Edit Action Settings. In there type "Thanks for the message! Here's what you sent me: %%d:0000000:message%%" except replace the 0000000 with the numeric ID of the device. Press Save, and then at the bottom of the Edit Trigger dialog find Add New. Select "Mark current message as Read" from the Messages Actions list, choose the same device, and press OK. If the device state was already at New the trigger won't start automatically, because it is waiting for it to become New. But you can press Execute Actions Now in the bottom corner of Indigo's home window to get it started.
+
