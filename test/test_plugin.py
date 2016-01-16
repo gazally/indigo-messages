@@ -4,6 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import print_function
+from __future__ import unicode_literals
 import os
 import sys
 import unittest
@@ -25,10 +26,6 @@ class PluginBaseForTest(object):
         pass
     def substitute(self, string):
         return string
-    def debugLog(self, string):
-        pass
-    def errorLog(self, string):
-        pass
 
 class DeviceForTest(object):
     """ Mockup of indigo.device, for testing """
@@ -37,6 +34,7 @@ class DeviceForTest(object):
         self.name = name
         self.pluginProps = props
         self.states = {}
+        self.configured = True
     def updateStateOnServer(self, key=None, value=None, clearErrorState=True):
         assert key is not None
         assert value is not None
@@ -44,13 +42,15 @@ class DeviceForTest(object):
     def replacePluginPropsOnServer(self, props):
         self.pluginProps = props
         
-
 class PluginTestCase(unittest.TestCase):
 
     def setUp(self):
         self.indigo_mock = Mock()
         self.indigo_mock.PluginBase = PluginBaseForTest
         self.indigo_mock.PluginBase.pluginPrefs = {"showDebugInfo" : False}
+        self.indigo_mock.PluginBase.debugLog = Mock()
+        self.indigo_mock.PluginBase.errorLog = Mock(
+            side_effect=Exception("errorLog called"))
         self.indigo_mock.Dict = Mock(return_value={}.copy())
         self.indigo_mock.devices = {}
         
@@ -82,6 +82,12 @@ class PluginTestCase(unittest.TestCase):
         # why this fixed it is a mystery to me
         return self.plugin_module.Plugin("What's", "here", "doesn't matter",
                                            {"showDebugInfo" : False})
+
+    def test_Init_LogsError_OnAppsScriptException(self):
+        self.plugin_module.appscript.app.side_effect = Exception("test")
+        PluginBaseForTest.errorLog.side_effect = None
+        pl = self.new_plugin()
+        self.assertTrue(PluginBaseForTest.errorLog.called)
 
     def test_Startup_Succeeds(self):
         self.plugin.startup()
@@ -117,9 +123,27 @@ class PluginTestCase(unittest.TestCase):
         self.assertFalse(self.plugin.debug)
              
     def test_PreferencesUIValidation_Succeeds(self):
-        values = {"showDebugInfo":"false"}
+        values = {"showDebugInfo":True}
+        ok, d = self.plugin.validatePrefsConfigUi(values)        
+        values = {"showDebugInfo":False}
         ok, d = self.plugin.validatePrefsConfigUi(values)
         self.assertTrue(ok)
+
+    def test_getActionConfigUiValues_SetsValues_ForAllSendersDevice(self):
+        self.mock_services_and_buddies()
+        dev = self.make_and_start_a_test_device(
+                      1, "dev1", {"handle":"",
+                                  "service":"",
+                                  "allSenders":True})
+        values = {}
+        v, e = self.plugin.getActionConfigUiValues(values, "sendMessage", 1)
+        self.assertTrue(values["allSenders"])
+
+    def test_setRecipientButtonPressed_FillsDefaults_ForAllSendersDevice(self):
+        values = {"service":"", "handle":""}
+        self.plugin.setRecipientButtonPressed(values, "sendMessage", 1)
+        self.assertTrue(values["service"])
+        self.assertTrue(values["handle"])
 
     def test_ActionUIValidation_Succeeds_OnValidInput(self):
         values = {"message":"Hi"}
@@ -142,25 +166,23 @@ class PluginTestCase(unittest.TestCase):
         self.assertEqual(len(tup), 3)
         ok, val, errs = tup
         self.assertFalse(ok)
-        if tag:
-            self.assertEqual(len(errs), 2)
-            self.assertTrue(tag in errs)
-            self.assertTrue(errs[tag])
-        else:
-            self.assertEqual(len(errs), 1)
+        self.assertEqual(len(errs), 2)
+        self.assertTrue(tag in errs)
+        self.assertTrue(errs[tag])
 
         self.assertTrue("showAlertText" in errs)
         self.assertTrue(errs["showAlertText"])
 
     def test_DeviceUIValidation_Succeeds_OnValidInput(self):
-        values = {"handle":"1-800-CALL-ME", "service":"FooMessage"}
+        values = {"handle":"1-800-CALL-ME", "service":"FooMessage",
+                  "deviceVersion":"0.1", "allSenders" : False}
         tup = self.plugin.validateDeviceConfigUi(values, 0, 0)
         self.assertEqual(len(tup), 2)
         ok, val = tup
         self.assertTrue(ok)
 
     def test_ServiceGenerator_Succeeds_WhenMessagesAppRaisesException(self):
-        self.mapp.services = Mock(side_effect = Exception("test"))
+        self.mapp.services.name.get.side_effect = Exception("test")
         s = self.plugin.serviceGenerator()
         self.assertEqual(len(s), 0)
 
@@ -175,13 +197,16 @@ class PluginTestCase(unittest.TestCase):
         s = self.plugin.serviceGenerator(values=values)
         self.assertEqual(len(s), 2)
 
+    def test_ServicePopupChanged_Succeeds(self):
+        self.plugin.servicePopupChanged({}, "", 0)
+
     def test_BuddyGenerator_Succeeds_WhenNotGivenService(self):
         self.mock_services_and_buddies()
         b = self.plugin.buddyGenerator()
         self.assertTrue(len(b) == 0)
 
     def test_BuddyGenerator_Succeeds_WhenMessagesAppRaisesException(self):
-        self.mapp.services = Mock(side_effect=Exception("test"))
+        self.mapp.services.name.get.side_effect = Exception("test")
         b = self.plugin.buddyGenerator()
         self.assertEqual(len(b), 0)
 
@@ -205,34 +230,56 @@ class PluginTestCase(unittest.TestCase):
         b = self.plugin.buddyGenerator(values=values)
         self.assertEqual(len(b), 1)
 
+    def test_DeviceStartComm_Ignores_UnconfiguredDevice(self):
+        dev = DeviceForTest(1, "dev", {})
+        dev.configured = False
+        self.plugin.deviceStartComm(dev)
+
     def test_DeviceStartComm_Succeeds_OnValidInput(self):
         self.mock_services_and_buddies()
         dev = self.make_and_start_a_test_device(
                       1, "dev1", {"handle":"barney@bedrock.com",
-                                  "service":"E:fred@bedrock.com"})
+                                  "service":"E:fred@bedrock.com",
+                                  "allSenders":False})
         states = dev.states
-        self.assertEqual(len(states), 5)
+        self.assertEqual(len(states), 7)
         self.assertEqual(states["message"], "")
         self.assertEqual(states["status"], "No Message")
-        self.assertEqual(states["response"], "")
+        self.assertEqual(states["service"], "E:fred@bedrock.com")
+        self.assertEqual(states["handle"], "barney@bedrock.com")
         self.assertEqual(states["responseStatus"], "No Message")
         self.assertTrue("name" in states)
+
+        dev = self.make_and_start_a_test_device(
+            2, "dev2", {"handle":"", "service":"", "allSenders":True})
+        states = dev.states
+        self.assertEqual(len(states), 7)
+        self.assertEqual(states["message"], "")
+        self.assertEqual(states["status"], "No Message")
+        self.assertEqual(states["service"], "")
+        self.assertEqual(states["handle"], "")
+        self.assertEqual(states["name"], "")        
+        self.assertEqual(states["responseStatus"], "No Message")
+
                         
     def test_DeviceStartComm_Fails_WhenServiceNotFound(self):
-        self.mapp.services.__getitem__ = Mock(side_effect=Exception("test"))
+        PluginBaseForTest.errorLog.side_effect = None        
+        self.mapp.services.__getitem__.side_effect = Exception("test")
         dev1 = self.make_and_start_a_test_device(1, "d1",
                                                 {"handle":"######",
-                                                 "service":"#####"})
+                                                 "service":"#####",
+                                                 "allSenders":False})
         self.asserts_for_DeviceStartComm_Failure(dev1.states)
         self.assertTrue(dev1.id in self.plugin.device_info)
         
         dev2 = self.make_and_start_a_test_device(2, "d2",
-                    {"handle":"######", "service":"E:fred@bedrock.com"})
+                    {"handle":"######", "service":"E:fred@bedrock.com",
+                     "allSenders":False})
         self.asserts_for_DeviceStartComm_Failure(dev2.states)
         self.assertTrue(dev2.id in self.plugin.device_info)
 
     def asserts_for_DeviceStartComm_Failure(self, states):
-        self.assertEqual(len(states), 5)
+        self.assertEqual(len(states), 7)
         self.assertEqual(states["message"], "")
         self.assertEqual(states["status"], "Error")
         self.assertEqual(states["response"], "")
@@ -243,15 +290,30 @@ class PluginTestCase(unittest.TestCase):
         self.mock_services_and_buddies()
         dev = self.make_and_start_a_test_device(1, "d1",
                                                 {"handle":"barney@bedrock.com",
-                                                 "service":"E:fred@bedrock.com"})
+                                                 "service":"E:fred@bedrock.com",
+                                                 "allSenders":False})
         self.plugin.deviceStopComm(dev)
         self.assertFalse(dev.id in self.plugin.device_info)
+
+    def test_MarkAsRead_LogsError_UnconfiguredDevice(self):
+        dev = DeviceForTest(1, "dev", {})
+        dev.configured = False
+        self.indigo_mock.devices[1] = dev
+
+        action = Mock()
+        action.props = {"message":"", "handle":""}
+        action.device_id = 1
+        
+        PluginBaseForTest.errorLog.side_effect = None
+        self.plugin.markAsRead(action)
+        self.assertTrue(PluginBaseForTest.errorLog.called)
 
     def test_receiveMessageAndMarkAsRead_Succeed_WhenMatchingDeviceExists(self):
         self.mock_services_and_buddies()
         dev = self.make_and_start_a_test_device(1, "d1",
                                             {"handle":"barney@bedrock.com",
-                                             "service":"E:fred@bedrock.com"})
+                                             "service":"E:fred@bedrock.com",
+                                             "allSenders":False})
         self.assertEqual(dev.states["status"], "No Message")
 
         action = Mock()
@@ -292,7 +354,8 @@ class PluginTestCase(unittest.TestCase):
         self.mock_to_make_deviceStartComm_succeed()
         dev = self.make_and_start_a_test_device(1, "d1",
                                             {"handle":"fred@fred.com",
-                                             "service":"fredserv"})
+                                             "service":"fredserv",
+                                             "allSenders":False})
         self.assertTrue(dev.states["status"] == "No Message")
 
         action = Mock()
@@ -306,6 +369,38 @@ class PluginTestCase(unittest.TestCase):
         self.assertEqual(dev.states["message"], "")
         self.assertEqual(self.plugin.device_info[dev.id], [])
 
+    def test_receiveMessage_Succeeds_WhenAllSendersDeviceExists(self):
+        self.mock_services_and_buddies()
+        dev = self.make_and_start_a_test_device(1, "d1",
+                                            {"handle":"",
+                                             "service":"",
+                                             "allSenders":True})
+        self.assertEqual(dev.states["status"], "No Message")
+
+        action = Mock()
+        test_message = "This is a test"
+        action.props = {"message":test_message,
+                        "handle": "barney@bedrock.com",
+                        "service": "E:fred@bedrock.com",
+                        "service_type":"#####"}
+        self.plugin.receiveMessage(action)
+        self.assertEqual(dev.states["status"], "New")
+        self.assertEqual(dev.states["message"], test_message)
+        self.assertEqual(self.plugin.device_info[dev.id], [])
+
+    def test_receiveMessage_LogsError_WhenActionPropsMissingKeys(self):
+        action = Mock()
+        action.props = {"message":"", "handle":""}
+        PluginBaseForTest.errorLog.side_effect = None
+        self.plugin.receiveMessage(action)
+        self.assertEqual(PluginBaseForTest.errorLog.call_count, 1)
+        action.props.pop("handle")
+        self.plugin.receiveMessage(action)
+        self.assertEqual(PluginBaseForTest.errorLog.call_count, 2)
+        action.props.pop("message")
+        self.plugin.receiveMessage(action)
+        self.assertEqual(PluginBaseForTest.errorLog.call_count, 3)
+
     def mock_to_make_deviceStartComm_succeed(self):
         self.plugin._messages_app_buddy = Mock()
         self.plugin._name_of_buddy = Mock(return_value="whatever")
@@ -313,7 +408,8 @@ class PluginTestCase(unittest.TestCase):
     def test_sendMessage_Succeeds_OnValidInput(self):
         dev = self.make_and_start_a_test_device(1, "d1",
                                             {"handle":"fred@fred.com",
-                                             "service":"fredserv"})
+                                             "service":"fredserv",
+                                             "allSenders":False})
         action = Mock()
         test_message = "This is a test"
         action.deviceId = dev.id
@@ -324,14 +420,59 @@ class PluginTestCase(unittest.TestCase):
         self.assertEqual(dev.states["responseStatus"], "Sent")
         self.assertEqual(dev.states["response"], test_message)
 
+    def test_sendMessage_LogsError_OnUnconfiguredAction(self):
+        dev = self.make_and_start_a_test_device(1, "d1",
+                                            {"handle":"fred@fred.com",
+                                             "service":"fredserv",
+                                             "allSenders":False})
+        action = Mock()
+        action.deviceId = dev.id
+        action.props ={}
+        PluginBaseForTest.errorLog.side_effect = None
+        
+        self.plugin.sendMessage(action)
+        self.assertTrue(PluginBaseForTest.errorLog.called)
+
+    def test_sendMessage_LogsError_OnMissingProps(self):
+        dev = self.make_and_start_a_test_device(1, "d1",
+                                            {"handle":"fred@fred.com",
+                                             "service":"fredserv",
+                                             "allSenders":True})
+        action = Mock()
+        action.deviceId = dev.id
+        action.props ={"message":"test"}
+        PluginBaseForTest.errorLog.side_effect = None
+        
+        self.plugin.sendMessage(action)
+        self.assertTrue(PluginBaseForTest.errorLog.called)
+
+        
+
+    def test_sendMessage_LogsError_OnUnconfiguredDevice(self):
+        dev = self.make_and_start_a_test_device(1, "d1",
+                                            {"handle":"fred@fred.com",
+                                             "service":"fredserv",
+                                             "allSenders":False})
+        dev.configured = False
+        action = Mock()
+        test_message = "This is a test"
+        action.deviceId = dev.id
+        action.props ={"message": test_message}
+        PluginBaseForTest.errorLog.side_effect = None
+        
+        self.plugin.sendMessage(action)
+        self.assertTrue(PluginBaseForTest.errorLog.called)
+
     def test_sendMessage_SetsErrorState_OnMessagesAppException(self):
         # Turns out Messages.app doesn't throw exceptions no matter what
         # random non-handle string and service you give it
-        self.mapp.send = Mock(side_effect=Exception("test"))
+        self.mapp.send.side_effect=Exception("test")
+        PluginBaseForTest.errorLog.side_effect = None
         
         dev = self.make_and_start_a_test_device(1, "d1",
                                             {"handle":"fred@fred.com",
-                                             "service":"fredserv"})
+                                             "service":"fredserv",
+                                             "allSenders":False})
         action = Mock()
         test_message = "This is a test"
         action.deviceId = dev.id
@@ -350,7 +491,7 @@ class PluginTestCase(unittest.TestCase):
     def mock_services_and_buddies(self):
         self.mapp.services.name.get.return_value = ["E:fred@bedrock.com"]
         self.mapp.services.enabled.get.return_value = [True]
-        self.mapp.services.service_type.get.return_value = ["iMessage"]
+        self.mapp.services.service_type.get.return_value = ["k.iMessage"]
         
         mockbuddy = Mock()
         self.mapp.services.__getitem__.return_value = mockbuddy

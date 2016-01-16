@@ -6,10 +6,7 @@
 	</Field>
 	<Field id="sep" type="separator"/>
 	<Field id="instructions" type="label">
-		<Label>Create a new device for each person you want to exchange Messages with.</Label>
-	</Field>
-	<Field id="instructions2" type="label">
-		<Label>In order to receive messages from Messages.app, go to the Messages.app Preferences, choose the General tab, and change the value of "AppleScript handler" to "Open Scripts Folder". Copy the Run Indigo Message Plugin Action.applescript file into that directory, then close and re-open Messages.app Preferences, and select the Run Indigo Message Plugin Action in the AppleScript handler list. Due to a bug in Messages.app, new messages will not always reach Indigo if Messages.app is in the foreground, so put an Indigo window in front of it.</Label>
+		<Label>In order to receive messages from the Messages App, go to the Messages App Preferences, choose the General tab, and change the value of "AppleScript handler" to "Open Scripts Folder". Copy the Run Indigo Message Plugin Action.applescript file into that directory, then close and re-open Messages Preferences, and select the Run Indigo Message Plugin Action in the AppleScript handler list. Due to a bug in the Messages App, new messages will not always reach Indigo if Messages is in the foreground, so put an Indigo window in front of it.</Label>
 	</Field>
 	<Field id="sep2" type="separator"/>
 	<Field id="showDebugInfo" type="checkbox" defaultValue="false">
