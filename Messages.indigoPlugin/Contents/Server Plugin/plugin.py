@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 """Messages App plugin for IndigoServer"""
-
+from __future__ import unicode_literals
 import appscript
 import indigo
 
@@ -24,7 +24,7 @@ class Plugin(indigo.PluginBase):
         indigo.PluginBase.__init__(self, plugin_id, display_name,
                                    version, prefs)
         self.debug = True
-        self.debugLog(u"showDebugInfo" + unicode(prefs.get("showDebugInfo", False)))
+        self.debugLog("showDebugInfo" + unicode(prefs.get("showDebugInfo", False)))
         self.debug = prefs.get("showDebugInfo", False)
         self.device_info = {}
 
@@ -137,10 +137,6 @@ class Plugin(indigo.PluginBase):
         """ Called by the Indigo UI to generate a list for the Contact handle
         dynamic list in the Device Configuration dialog.
         
-        If a pre-existing device is brought up in the Configuration dialog,
-        it may reference a buddy who no longer exists. That buddy will
-        be in the list too, labeled as Unavailable.
-        
         Returns a list of tuples, the first element of each is the handle
         and the second the person's name with the handle in parens, for
         example: "Fred Flintstone (fred@bedrock.com).
@@ -170,12 +166,12 @@ class Plugin(indigo.PluginBase):
         sorted by display string. If values[tag] is not in the list of results,
         add it.
         """
-        tuples =  [(h, u"{0} ({1})".format(n, h)) for h, n in results.items()]
+        tuples =  [(h, "{0} ({1})".format(n, h)) for h, n in results.items()]
 
         if (values is not None and tag in values and values[tag]
             and values[tag] not in results.keys()):
             tup = (values[tag],
-                   u"Unavailable ({0})".format(values[tag]))
+                   "Unavailable ({0})".format(values[tag]))
             tuples.append(tup)
 
         return sorted(tuples, key=lambda tup: tup[1])
@@ -212,9 +208,9 @@ class Plugin(indigo.PluginBase):
 
         """
         props = device.pluginProps
-        self.debugLog(u"Starting device: {0} "
-                      u"for messages from: {1} "
-                      u"on service {2}".format(device.id, props["handle"],
+        self.debugLog("Starting device: {0} "
+                      "for messages from: {1} "
+                      "on service {2}".format(device.id, props["handle"],
                                               props["service"]))
         self.device_info[device.id] = []
 
@@ -225,9 +221,9 @@ class Plugin(indigo.PluginBase):
             name = self._name_of_buddy(buddy)
         except Exception, e:
             self.debugLog("Error talking to Messages: " + unicode(e))
-            self.errorLog(u'Device {0} cannot be started because '
-                          u'Messages App does not recognize "{1}" '
-                          u'as a valid handle on "{2}". '.format(
+            self.errorLog('Device {0} cannot be started because '
+                          'Messages App does not recognize "{1}" '
+                          'as a valid handle on "{2}". '.format(
                               device.id, props["handle"], props["service"]))
             status = "Error"
             name = ""
@@ -242,7 +238,7 @@ class Plugin(indigo.PluginBase):
         """ Called by Indigo Server to tell us it's done with a device.
         Maintains the list of devices used by receiveMessage.
         """
-        self.debugLog(u"Stopping device: {0}".format(device.id))
+        self.debugLog("Stopping device: {0}".format(device.id))
         self.device_info.pop(device.id, None)
  
 
@@ -278,9 +274,9 @@ class Plugin(indigo.PluginBase):
         service_name = action.props["service"]
         service_type = action.props.get("service_type", "")
 
-        self.debugLog(u'Received Message: "{0}" '
-                      u'From handle: {1}  '
-                      u'On service: {2} ({3})'.format(message, handle,
+        self.debugLog('Received Message: "{0}" '
+                      'From handle: {1}  '
+                      'On service: {2} ({3})'.format(message, handle,
                                                    service_name, service_type))
         found_device = False
         for device_id in self.device_info.iterkeys():
@@ -353,11 +349,11 @@ class Plugin(indigo.PluginBase):
             self._send_using_messages_app(message, handle, service)
         except Exception, e:
             self.debugLog("Error talking to Messages:" +  unicode(e))
-            self.errorLog(u"Message to {0} couldn't be sent".format(handle))
+            self.errorLog("Message to {0} couldn't be sent".format(handle))
             device.updateStateOnServer(key="responseStatus", value="Error")
         else:
             device.updateStateOnServer(key="responseStatus", value="Sent")
-            self.debugLog(u'Sent "{0}" to {1}.'.format(message, handle))
+            self.debugLog('Sent "{0}" to {1}.'.format(message, handle))
 
 
     ##### Dealing with Messages App #####
