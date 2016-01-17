@@ -24,7 +24,11 @@ class PluginBaseForTest(object):
         pass
     def sleep(self):
         pass
-    def substitute(self, string):
+
+def substitute(self, string, validateOnly=False):
+    if validateOnly:
+        return (True, string)
+    else:
         return string
 
 class DeviceForTest(object):
@@ -47,10 +51,12 @@ class PluginTestCase(unittest.TestCase):
     def setUp(self):
         self.indigo_mock = Mock()
         self.indigo_mock.PluginBase = PluginBaseForTest
-        self.indigo_mock.PluginBase.pluginPrefs = {"showDebugInfo" : False}
-        self.indigo_mock.PluginBase.debugLog = Mock()
-        self.indigo_mock.PluginBase.errorLog = Mock(
+        PluginBaseForTest.pluginPrefs = {"showDebugInfo" : False}
+        PluginBaseForTest.debugLog = Mock()
+        PluginBaseForTest.errorLog = Mock(
             side_effect=Exception("errorLog called"))
+        PluginBaseForTest.substitute = substitute
+        
         self.indigo_mock.Dict = Mock(return_value={}.copy())
         self.indigo_mock.devices = {}
         
@@ -80,8 +86,10 @@ class PluginTestCase(unittest.TestCase):
         # attribute" warnings, I think because tearDown is called,
         # removing the base class, before the plugin objects are deleted.
         # why this fixed it is a mystery to me
-        return self.plugin_module.Plugin("What's", "here", "doesn't matter",
+        plugin =  self.plugin_module.Plugin("What's", "here", "doesn't matter",
                                            {"showDebugInfo" : False})
+        plugin.startup()
+        return plugin
 
     def test_Init_LogsError_OnAppsScriptException(self):
         self.plugin_module.appscript.app.side_effect = Exception("test")
@@ -146,14 +154,14 @@ class PluginTestCase(unittest.TestCase):
         self.assertTrue(values["handle"])
 
     def test_ActionUIValidation_Succeeds_OnValidInput(self):
-        values = {"message":"Hi"}
+        values = {"message":"Hi", "allSenders":False}
         tup = self.plugin.validateActionConfigUi(values, "sendMessage", 0)
         self.assertEqual(len(tup), 2)
         ok, val = tup
         self.assertTrue(ok)
 
     def test_ActionUIValidation_Fails_OnEmptyMessage(self):
-        values = {"message":""}
+        values = {"message":"", "allSenders":False}
         tup = self.plugin.validateActionConfigUi(values, "sendMessage", 0)
         self.asserts_for_UIValidation_Failure("message", tup)
 

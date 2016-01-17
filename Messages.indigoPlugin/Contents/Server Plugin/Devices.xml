@@ -22,7 +22,7 @@
       <Field id="instructions2" type="label" visibleBindingId="allSenders" visibleBindingValue="true">
 	<Label>This device will receive messages from all senders who do not have another device specifically set up for them.</Label>
       </Field>
-      <Field id="deviceVersion" type="textfield" hidden="true" devaultValue="0.1">
+      <Field id="deviceVersion" type="textfield" hidden="true" defaultValue="0.1">
 	<Label>Hidden device version</Label>
       </Field>
     </ConfigUI>

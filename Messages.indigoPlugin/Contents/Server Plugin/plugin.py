@@ -9,11 +9,15 @@ from __future__ import unicode_literals
 import appscript
 import indigo
 
+_VERSION = "0.1"
+
 # todo - indigo.device has a setErrorStateOnServer method. Maybe I should
 #       be using it
 # todo - is it possible to programatically start a new conversation?
 # todo - message handler, received text invitation, will that fix
 #       first message problem?
+# todo - by using the sent message applescript handler, could probably
+#       figure out that a message didn't send and log it at least
 
 
 class Plugin(indigo.PluginBase):
@@ -26,6 +30,10 @@ class Plugin(indigo.PluginBase):
                                    version, prefs)
         self.debug = prefs.get("showDebugInfo", False)
 
+    def __del__(self):
+        indigo.PluginBase.__del__(self)
+
+    def startup(self):
         # device_info is indexed by device_id and contains a list of MessageInfo
         # objects for the unread backlog for the device
         self.device_info = {}
@@ -37,12 +45,6 @@ class Plugin(indigo.PluginBase):
             self.errorLog("The Messages App doesn't seem to be installed "
                           "on your system. After you fix the problem, you ",
                           "will need to disable and re-enable this plugin.")
-
-    def __del__(self):
-        indigo.PluginBase.__del__(self)
-
-    def startup(self):
-        pass
 
     def shutdown(self):
         pass
@@ -106,13 +108,23 @@ class Plugin(indigo.PluginBase):
             if "message" not in values or not values["message"]:
                 errors["message"] = "Can't send an empty message."
                 errors["showAlertText"] = "Please type a message to send."
-
+            else:
+                self.validate_substitution(values, errors, "message")
+                if values["allSenders"]:
+                    self.validate_substitution(values, errors, "service")
+                    self.validate_substitution(values, errors, "handle")
         if errors:
             return (False, values, errors)
         else:
             return (True, values)
 
-    # ----- Device Configuration UI ----- #
+    def validate_substitution(self, values, errors, field):
+        tup = self.substitute(values[field], validateOnly=True)
+        valid = tup[0]
+        if not valid:
+            errors[field] = tup[1]
+
+            # ----- Device Configuration UI ----- #
 
     def validateDeviceConfigUi(self, values, type_id, device_id):
         """ called by the Indigo UI to validate the values dictionary for
@@ -280,10 +292,14 @@ class Plugin(indigo.PluginBase):
         uses to pass messages to Indigo.
 
         action.props should contain the following keys:
-            'message', 'handle', 'service', 'service_type'
+            'message', 'handle', 'service'
             'service' needs to be the service name used by Messages.
+
+        These keys are optional in action.props: 'service_type', 'version'
             'service_type' is only used to make the log message more
             comprehensible.
+            'version' is used to warn the user if if the AppleScript
+            handler is out of date
 
         receiveMessage works by searching the plugin's list of devices
         for ones that match the handle and service of the sender. If such a
@@ -296,13 +312,19 @@ class Plugin(indigo.PluginBase):
                 "handle" not in action.props or
                 "service" not in action.props):
             self.errorLog("receiveMessage called without message, "
-                          "handle or service_name")
+                          "handle or service name")
             return
 
         message = action.props["message"]
         handle = action.props["handle"]
         service_name = action.props["service"]
         service_type = action.props.get("service_type", "")
+        version = action.props.get("version", "")
+
+        if version and version != _VERSION:
+            self.errorLog("Messages Plugin version {0} received message"
+                          "from Applescript Handler version {1}".format(
+                              _VERSION, version))
 
         self.debugLog('Received Message: "{0}" From handle: {1} '
                       "On service: {2} ({3})".format(

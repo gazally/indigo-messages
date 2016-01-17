@@ -13,4 +13,8 @@
 		<Label>Enable debugging:</Label>
 		<Description>(not recommended)</Description>
 	</Field>
+      <Field id="configVersion" type="textfield" hidden="true" defaultValue="0.1">
+	<Label>Hidden config version</Label>
+      </Field>
+	
 </PluginConfig>
