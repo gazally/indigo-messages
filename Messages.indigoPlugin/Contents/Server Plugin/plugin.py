@@ -306,7 +306,8 @@ class Plugin(indigo.PluginBase):
         device already has an unread message the message will be added
         to the device's backlog list, which is the list of MessageInfo
         objects in self.device_info. If no matching device is found,
-        the message will be ignored.
+        see if there are any devices configured for all senders, and
+        add the message to those. Otherwise ignore the message.
         """
         if ("message" not in action.props or
                 "handle" not in action.props or
@@ -327,7 +328,7 @@ class Plugin(indigo.PluginBase):
                               _VERSION, version))
 
         self.debugLog('Received Message: "{0}" From handle: {1} '
-                      "On service: {2} ({3})".format(
+                      "On service: {2} Service type: {3}".format(
                           message, handle, service_name, service_type))
         found_device = False
         all_senders_devices = []
