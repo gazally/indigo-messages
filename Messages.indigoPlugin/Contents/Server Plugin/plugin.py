@@ -81,7 +81,7 @@ class Plugin(indigo.PluginBase):
 
     def getActionConfigUiValues(self, values, type_id, device_id):
         """ called by the Indigo UI before the Action configuration dialog
-        is shown tu the user. There are several fields controlled by a hidden
+        is shown to the user. There are several fields controlled by a hidden
         checkbox, and only shown for devices with the allSenders flag set.
         """
         errors = indigo.Dict()
