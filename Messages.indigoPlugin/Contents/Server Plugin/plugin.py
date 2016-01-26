@@ -269,13 +269,13 @@ class Plugin(indigo.PluginBase):
                 name = ""
 
         self.device_info[device.id] = []
-        device.updateStateOnServer(key="message", value="")
-        device.updateStateOnServer(key="status", value=status)
-        device.updateStateOnServer(key="service", value=service)
-        device.updateStateOnServer(key="handle", value=handle)
-        device.updateStateOnServer(key="response", value="")
-        device.updateStateOnServer(key="responseStatus", value=status)
-        device.updateStateOnServer(key="name", value=name)
+        device.updateStateOnServer("message", "")
+        device.updateStateOnServer("status", status)
+        device.updateStateOnServer("service", service)
+        device.updateStateOnServer("handle", handle)
+        device.updateStateOnServer("response", "")
+        device.updateStateOnServer("responseStatus", status)
+        device.updateStateOnServer("name", name)
 
     def deviceStopComm(self, device):
         """ Called by Indigo Server to tell us it's done with a device.
@@ -346,16 +346,29 @@ class Plugin(indigo.PluginBase):
             if not all_senders_devices:
                 self.debugLog("No device has been set up for this sender. "
                               "Ignoring message.")
+            else:
+                try:
+                    buddy = self._messages_app_buddy(handle, service_name)
+                    name = self._name_of_buddy(buddy)
+                except Exception:
+                    self.debugLog("Error talking to Messages, attempting "
+                                  "to get name of {0} on {1}".format(
+                                      handle, service_name), exc_info=True)
+                    name = ""
+
             for device in all_senders_devices:
                 self.device_receive_message(device, message, handle,
-                                            service_name)
+                                            service_name, name)
 
-    def device_receive_message(self, device, message, handle, service):
+    def device_receive_message(self, device, message, handle, service,
+                               name=""):
         if device.states["status"] != "New":
-            device.updateStateOnServer(key="message", value=message)
-            device.updateStateOnServer(key="status", value="New")
-            device.updateStateOnServer(key="handle", value=handle)
-            device.updateStateOnServer(key="service", value=service)
+            device.updateStateOnServer("message", message)
+            device.updateStateOnServer("status", "New")
+            device.updateStateOnServer("handle", handle)
+            device.updateStateOnServer("service", service)
+            if name and device.pluginProps["allSenders"]:
+                device.updateStateOnServer("name", name)
         else:
             message_info = MessageInfo(message, handle, service)
             self.device_info[device.id].append(message_info)
@@ -376,15 +389,15 @@ class Plugin(indigo.PluginBase):
             return
         device = indigo.devices[device_id]
         if device.states["status"] == "New":
-            device.updateStateOnServer(key="status", value="Read")
+            device.updateStateOnServer("status", "Read")
 
         backlog = self.device_info.get(device_id, None)
         if backlog:
             m = backlog.pop(0)
-            device.updateStateOnServer(key="message", value=m.message)
-            device.updateStateOnServer(key="handle", value=m.handle)
-            device.updateStateOnServer(key="service", value=m.service)
-            device.updateStateOnServer(key="status", value="New")
+            device.updateStateOnServer("message", m.message)
+            device.updateStateOnServer("handle", m.handle)
+            device.updateStateOnServer("service", m.service)
+            device.updateStateOnServer("status", "New")
 
     def sendMessage(self, action):
         """Called by Indigo Server to implement sendMessage action in
@@ -427,16 +440,16 @@ class Plugin(indigo.PluginBase):
                           "service. Message cannot be sent.")
             return
 
-        device.updateStateOnServer(key="response", value=message)
-        device.updateStateOnServer(key="responseStatus", value="Sending")
+        device.updateStateOnServer("response", message)
+        device.updateStateOnServer("responseStatus", "Sending")
         try:
             self._send_using_messages_app(message, handle, service)
         except Exception, e:
             self.debugLog("Error talking to Messages:" + unicode(e))
             self.errorLog("Message to {0} couldn't be sent".format(handle))
-            device.updateStateOnServer(key="responseStatus", value="Error")
+            device.updateStateOnServer("responseStatus", "Error")
         else:
-            device.updateStateOnServer(key="responseStatus", value="Sent")
+            device.updateStateOnServer("responseStatus", "Sent")
             self.debugLog('Sent "{0}" to {1}.'.format(message, handle))
 
     # ----- Dealing with Messages App ----- #

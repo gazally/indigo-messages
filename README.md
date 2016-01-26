@@ -21,7 +21,7 @@ From the Indigo main window, choose Devices and then New...  On the Device Type 
 
 Device configuration gives you two choices. The default is to connect the device to one specific person. In that case, there are two lists in the configuration dialog. The top one lets you choose the message service to use, which is the same as the list of accounts in Messages Preferences. Once you have chosen something there, the second list will fill up with all the people Messages knows how to talk to on that service. On some message services, Messages.app puts confusing and unhelpful things in its list of available chat contacts. If you're having trouble figuring out what to select here, try starting a conversation with the person, turning on debug output using Toggle Debugging on the Plugin menu under Messages, and then when a message arrives from that person, their message service and ID or login will appear in the Indigo Log window. If you don't see anything in the Indigo Log when a message arrives, either the Applescript handler isn't installed correctly (see above) or debug logging isn't on (try toggling it from the menu).
 
-If you choose "Send and Receive messages from all senders" the two lists go away, because the device will now react to messages from anyone who you haven't set up a specific device for.
+If you choose "Send and Receive messages from all senders" the two lists go away, because the device will now react to messages from anyone who you haven't set up a specific device for. If you create more than one "all senders" device, they will all react.
 
 ###Receiving Messages
 
