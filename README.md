@@ -33,7 +33,7 @@ This plugin defines three Actions in Indigo. The first, "Receive a message from 
 
 The second action is "Mark current message as Read, and allow the next one to be fetched." Once you have done something with a message, use this action and it will set the state of the device to Read. However, if one or more messages has arrived and is waiting, it will also immediately set the state of the device back to New, with the next new message.
 
-The last action is "Send Message using the Messages app." Choose a Messages Plugin device for the person to send it to, and set the message in Edit Action Settings. If you set the device to react to all senders when you configured it, then you also get fields where you can enter any service and any login/phone number/handle available to Messages. There is a button which sets those fields up, using Indigo device substitution syntax, to send a message back to the person who last sent a message caught by this device. Please note that it is only safe to use this feature before you mark the message as Read. After you mark it read, another message could arrive at any time, changing the person you are sending the message to to someone you don't expect.
+The last action is "Send Message using the Messages app." Choose a Messages Plugin device for the person to send it to, and set the message in Edit Action Settings. If you set the device to react to all senders when you configured it, then you also get fields where you can enter any service and any login/phone number/handle available to Messages. There is a button which sets those fields up, using Indigo device substitution syntax, to send a message back to the person who last sent a message caught by this device. Please note that it is only safe to use this feature before you mark the message as Read. After you mark it read, another message could arrive at any time, changing the person you are sending the message to to someone you don't expect. The Send Message action will momentarily change the 
 
 ###Menu Items
 
@@ -44,3 +44,11 @@ This works like any other plugin in Indigo. It toggles debugging output on and o
 ###Examples
 
 Once you have a device set up and receiving messages, it's easy to make a trigger that automatically replies. First, look at the device and copy its device ID. Then create a new trigger, set its type to "Device State Changed", select your device and below that change the fields to "Status", "Becomes Equal to" and "New". Then select the Actions tab and choose "Send Message using the Messages App" from the Messages Actions list. Choose the same device, and then open Edit Action Settings. In there type "Thanks for the message! Here's what you sent me: %%d:0000000:message%%" except replace the 0000000 with the numeric ID of the device. Press Save, and then at the bottom of the Edit Trigger dialog find Add New. Select "Mark current message as Read" from the Messages Actions list, choose the same device, and press OK. If the device state was already at New the trigger won't start automatically, because it is waiting for it to become New. But you can press Execute Actions Now in the bottom corner of Indigo's home window to get it started.
+
+### Issues
+
+The messages app has some bugs in the way it calls its Message Handler Applescript. I don't know of a way to fix either one of them without making things a lot more complicated.
+
+First, if Messages is the foreground App, it calls "active chat message received" instead of "on message received". But it calls it TWICE per message. It's easier to put Messages in the background than it is to deal with the duplicates, so I have left "active chat message received" unimplemented.
+
+Messages.app also doesn't call any of its handlers when the first message arrives from a contact it has never had a conversation with before. But it does on the second message.
