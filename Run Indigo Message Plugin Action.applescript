@@ -2,9 +2,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
+#
 # Handler for Messages Application
 # to communicate new messages to Indigo Server Messages plugin
+#
+# Version 0.1
 #
 using terms from application "Messages"
 	
@@ -15,13 +17,14 @@ using terms from application "Messages"
 		set theService to service of theBuddy
 		set quoted_service to quoted_form_for_python(name of theService as string)
 		set quoted_service_type to quoted_form_for_python(service type of theService as string)
+		set quoted_version to quoted_form_for_python("0.1")
 		
 		# if you modify this script, remember that quoted_form_for_python is using double quotes		
 		set python_script to "
 messageID = \"me.gazally.indigoplugin.Messages\"
 messagePlugin = indigo.server.getPlugin(messageID)
 if messagePlugin.isEnabled():
-	messagePlugin.executeAction(\"receiveMessage\", props={\"message\": " & quoted_message & ", \"handle\":" & quoted_handle & ", \"service\":" & quoted_service & ", \"service_type\":" & quoted_service_type & "} )
+	messagePlugin.executeAction(\"receiveMessage\", props={\"message\": " & quoted_message & ", \"handle\":" & quoted_handle & ", \"service\":" & quoted_service & ", \"service_type\":" & quoted_service_type & ", \"version\":" & quoted_version & "} )
 "
 		# newlines in the above quoted text ARE significant
 		
@@ -91,10 +94,13 @@ if messagePlugin.isEnabled():
 	end chat room message received
 	
 	on active chat message received theMessage
-		# If you're puzzling over why Indigo isn't informed about messages received while Messages is the foreground application,
-		# it's because I didn't put anything here. However, the reason I didn't put anything here is because Messages (at least in OS X 10.11)
-		# has a bug which causes it to call this handler twice per message, and I couldn't figure out a good way to make my Indigo 
-		# plugin cope with that gracefully.		
+		# If you're puzzling over why Indigo isn't informed about
+		# messages received while Messages is the foreground
+		# application, it's because I didn't put anything here. However,
+		# the reason I didn't put anything here is because Messages
+		# (at least in OS X 10.11) has a bug which causes it to call
+		# this handler twice per message, and I couldn't figure out a
+		# good way to make my Indigo plugin cope with that gracefully
 	end active chat message received
 	
 	on addressed chat room message received theMessage from theBuddy for theChat

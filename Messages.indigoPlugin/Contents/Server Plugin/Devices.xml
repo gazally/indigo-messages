@@ -3,23 +3,28 @@
   <Device type="custom" id="messagesAppDevice">
     <Name>Messages App Device</Name>
     <ConfigUI>			
-	<Field id="instructions" type="label">
-		<Label>This device will monitor the Messages App for communications from one person, and allow you to send messages to them.</Label>
-	</Field>
-	<Field id="sep" type="separator"/>
-	<Field type="menu" id="service">
-	  <Label>Choose the message service to use (see Messages Preferences):"</Label>
-	  <List class="self" method="serviceGenerator"/>
-	  <CallbackMethod>servicePopupChanged</CallbackMethod>
-	</Field>
-	<Field id="handle" type="menu">
-	  <Label>Recipient's phone number, Apple ID or chat service login:</Label>
-	  <List class="self" method="buddyGenerator" dynamicReload="true"/>
-	</Field>
-	<Field id="sep2" type="separator"/>
-	<Field id="instructions2" type="label">
-	  <Label>On some message services, Messages.app puts confusing and unhelpful things in its list of available chat contacts. If you're having trouble figuring out what to select here, try starting a conversation with the person, turning on debug output using Toggle Debugging on the Plugin menu under Messages, and then when a message arrives from that person, their message service and ID or login will appear in the Indigo Log window.</Label>
-	</Field>
+      <Field id="instructions" type="label">
+	<Label>This device will monitor the Messages App for new messages and allow you to send messages.</Label>
+      </Field>
+      <Field id="sep" type="separator"/>
+      <Field id="allSenders" type="checkbox" defaultValue="false">
+	<Label>Send and Receive messages from all senders:</Label>
+      </Field>
+      <Field type="menu" id="service" visibleBindingId="allSenders" visibleBindingValue="false">
+	<Label>Choose the message service to use (see Messages Preferences):</Label>
+	<List class="self" method="serviceGenerator"/>
+	<CallbackMethod>servicePopupChanged</CallbackMethod>
+      </Field>
+      <Field id="handle" type="menu" visibleBindingId="allSenders" visibleBindingValue="false">
+	<Label>Sender's phone number, Apple ID or chat service login:</Label>
+	<List class="self" method="buddyGenerator" dynamicReload="true"/>
+      </Field>
+      <Field id="instructions2" type="label" visibleBindingId="allSenders" visibleBindingValue="true">
+	<Label>This device will receive messages from all senders who do not have another device specifically set up for them.</Label>
+      </Field>
+      <Field id="deviceVersion" type="textfield" hidden="true" defaultValue="0.1">
+	<Label>Hidden device version</Label>
+      </Field>
     </ConfigUI>
     <States>
       <State id="name">
@@ -36,6 +41,16 @@
 	<ValueType>String</ValueType>
 	<TriggerLabel>Last Message Received:</TriggerLabel>
 	<ControlPageLabel>Last Message Received:</ControlPageLabel>
+      </State>
+      <State id="service">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Sender's Message Service:</TriggerLabel>
+	<ControlPageLabel>Sender's Message Service:</ControlPageLabel>
+      </State>
+      <State id="handle">
+	<ValueType>String</ValueType>
+	<TriggerLabel>Sender's Messages Handle:</TriggerLabel>
+	<ControlPageLabel>Sender's Messages Handle:</ControlPageLabel>
       </State>
       <State id="response">
 	<ValueType>String</ValueType>

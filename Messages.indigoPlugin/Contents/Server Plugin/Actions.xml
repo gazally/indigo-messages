@@ -4,8 +4,25 @@
     <Name>Send Message using the Messages App</Name>
     <CallbackMethod>sendMessage</CallbackMethod>
     <ConfigUI>
+      <Field id="allSenders" type="checkbox" defaultValue="false" hidden="true">
+	<Label>Hidden allSenders</Label>
+      </Field>
       <Field id="message" type="textfield" default="">
 	<Label>Message to Send:</Label>
+      </Field>
+      <Field id="service" type="textfield" default="" visibleBindingId="allSenders" visibleBindingValue="true">
+	<Label>Service:</Label>
+      </Field>
+      <Field id="handle" type="textfield" default="" visibleBindingId="allSenders" visibleBindingValue="true">
+	<Label>Handle:</Label>
+      </Field>
+      <Field id="setRecipient" type="button" tooltip="This will replace the Service and Handle fields above with device state substitution markup to cause the message to be sent to the sender of the most recently received message." visibleBindingId="allSenders" visibleBindingValue="true">
+	<Title>Set Recipient Automatically to Last Sender</Title>
+	<CallbackMethod>setRecipientButtonPressed</CallbackMethod>
+      </Field>
+      <Field id = "sep" type = "separator"/>
+      <Field id = "explanation" type="label">
+	<Label>Variable and device substitution markup (%%v:VARIABLEID%% and  %%d:DEVICEID:STATEKEY%%) work in the above field(s).</Label>
       </Field>
     </ConfigUI>
   </Action>
