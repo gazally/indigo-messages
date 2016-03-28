@@ -364,11 +364,11 @@ class Plugin(indigo.PluginBase):
                                name=""):
         if device.states["status"] != "New":
             device.updateStateOnServer("message", message)
-            device.updateStateOnServer("status", "New")
             device.updateStateOnServer("handle", handle)
             device.updateStateOnServer("service", service)
             if name and device.pluginProps["allSenders"]:
                 device.updateStateOnServer("name", name)
+            device.updateStateOnServer("status", "New")
         else:
             message_info = MessageInfo(message, handle, service)
             self.device_info[device.id].append(message_info)
